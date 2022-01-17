@@ -1,5 +1,7 @@
-const { get } = require("mongoose");
-const BL = require("../BL");
+const HeroesLogic = require("../BL/HeroesLogic");
+const UsersLogic = require("../BL/UsersLogic");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env["JWT_SECRET"];
 const logger = require("pino-http")({
   quietReqLogger: true, // turn off the default logging output
   useLevel: "info",
@@ -20,36 +22,59 @@ const logger = require("pino-http")({
 
 const Router = (app) => {
   app.post("/users/login", async (req, res) => {
-    logger(req, res);
     try {
       console.log(req.body);
       const { body } = req,
-        result = await BL.users.login(body);
-      // res.log.info(result);
-      res.send(result);
+        result = await UsersLogic.login(body);
+      if (result.name) {
+        const token = jwt.sign({ ...result }, JWT_SECRET, { expiresIn: "1h" });
+        result.token = token;
+        res.send(result);
+      } else {
+        res.send(result);
+      }
+      logger(req, res);
     } catch (err) {
       res.send(err);
+    }
+  });
+
+  app.get("/users/verify", async (req, res) => {
+    const token = req.headers["x-access-token"];
+
+    if (!token) {
+      res.send("please send token!");
+    } else {
+      jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+          res.send(err);
+        } else {
+          console.log(decoded);
+          res.send(decoded);
+        }
+        logger(req, res);
+      });
     }
   });
 
   app.post("/users/signin", async (req, res) => {
-    logger(req, res);
-    req.log.info("start to signin");
     try {
       const { body } = req,
-        result = await BL.users.singin(body);
+        result = await UsersLogic.singin(body);
       res.send(result);
+      logger(req, res);
     } catch (err) {
       res.send(err);
     }
   });
 
-  app.put("/heroes/:hero_id", async (req, res) => {
-    console.log(req.params.hero_id);
+  app.put("/heroes/:id?", async (req, res) => {
+    console.log(req.params.id);
     try {
       const { body } = req,
-        result = await BL.heroes.setHeroPowerUp(body);
+        result = await HeroesLogic.setHeroPowerUp(body, _id);
       res.send(result);
+      logger(req, res);
     } catch (err) {
       res.send(err);
     }
@@ -57,8 +82,9 @@ const Router = (app) => {
 
   app.get("/heroes", async (req, res) => {
     try {
-      result = await BL.heroes.getHeroesList();
+      result = await HeroesLogic.getHeroesList();
       res.send(result);
+      logger(req, res);
     } catch (error) {
       res.send(error);
     }

@@ -1,6 +1,4 @@
 const mongoose = require("mongoose"),
-  users = require("./users"),
-  heroes = require("./heroes"),
   dbURL = process.env["dbURL"];
 
 const conn = mongoose.connection;
@@ -13,5 +11,3 @@ conn.on("disconnected", function () {
 conn.on("error", console.error.bind(console, "connection error:"));
 
 mongoose.connect(dbURL);
-
-module.exports = { users, heroes };
